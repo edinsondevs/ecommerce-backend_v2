@@ -21,7 +21,7 @@ export async function productRoutes(app: FastifyInstance) {
 		async (request, response) => {
 			// Si el código llega a esta línea, Fastify garantiza que request.body es PERFECTO.
 			const product = await ProductService.create(request.body);
-			return response.code(201).send(product);
+			return response.code(201).send({data: product});
 		},
 	);
 
@@ -45,7 +45,7 @@ export async function productRoutes(app: FastifyInstance) {
 		if (!updatedProduct) {
 			return response.code(404).send({ message: 'Producto no encontrado' });
 		}
-		return response.send(updatedProduct);
+		return response.code(200).send({data: updatedProduct});
 	});
 
 	// * DELETE /api/products/:id con validación de params y body
@@ -64,7 +64,7 @@ export async function productRoutes(app: FastifyInstance) {
 
 		// Aquí podríamos implementar la lógica para eliminar el producto (por ejemplo, marcarlo como inactivo)
 		const deleteProduct = await ProductService.delete(id, isLogicBoolean);
-
+		console.log('Producto eliminado: ', deleteProduct);
 		if (!deleteProduct) {
 			return response
 				.code(404)

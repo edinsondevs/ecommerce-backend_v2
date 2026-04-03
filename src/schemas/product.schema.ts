@@ -8,7 +8,7 @@ import { z } from 'zod';
 export const CreateProductSchema = z.object({
 	name: z.string({ message: "El nombre del producto debe superar los 5 caracteres" }).min(5),
 	// sku: z.string().length(8).toUpperCase(),
-	sku: z.string({ message: "El SKU debe ser valido" }),
+	sku: z.string({ message: "El SKU debe ser valido" }).min(8),
 	price: z.number({ message: "El precio debe ser un número positivo" }).positive(),
 	stock: z.number({ message: "El stock debe ser un número entero no negativo" }).int().nonnegative().default(0),
 	description: z.string({ message: "La descripción es obligatoria" }),
