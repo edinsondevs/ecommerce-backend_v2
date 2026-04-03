@@ -43,9 +43,9 @@ describe('--------------------          ----------------------------', () => {
 			const mockCreate = vi
 				.spyOn(ProductService, 'create')
 				.mockResolvedValue({
-					id: 'uuid-simulado-999',
+					id: '123e4567-e89b-12d3-a456-426614174000', // ✅ AHORA SÍ ES UN UUID VÁLIDO
 					name: 'Mouse Gamer',
-					sku: '4f20ff23-73b2-40cd-a9aa-729b7032f60a',
+					sku: 'MOU12345', // ✅ 8 CARACTERES EXACTOS
 					price: new Decimal(30),
 					stock: 20,
 					description:
@@ -53,7 +53,7 @@ describe('--------------------          ----------------------------', () => {
 					isActive: true,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-				});
+				} as any);
 
 			// 2. Inyectamos la petición normalmente
 			const response = await app.inject({
@@ -72,7 +72,7 @@ describe('--------------------          ----------------------------', () => {
 			// 3. Verificaciones de Fastify/Zod
 			expect(response.statusCode).toBe(201);
 			const body = JSON.parse(response.payload);
-			expect(body.data.id).toBe('uuid-simulado-999'); // Comprobamos que nos devolvió el ID simulado
+			expect(body.data.id).toBe('123e4567-e89b-12d3-a456-426614174000'); // Comprobamos que nos devolvió el ID simulado
 
 			// 4. Verificamos que nuestro espía realmente detuvo la petición
 			expect(mockCreate).toHaveBeenCalled();
@@ -86,7 +86,7 @@ describe('--------------------          ----------------------------', () => {
 				.spyOn(ProductService, 'findByStock')
 				.mockResolvedValue([
 					{
-						id: '1',
+						id: '123e4567-e89b-12d3-a456-426614174000',
 						name: 'Pro 1',
 						stock: 50,
 						sku: 'SKU00001',

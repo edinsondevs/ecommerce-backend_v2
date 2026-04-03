@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { ZodTypeProvider } from 'fastify-type-provider-zod';
-import { CreateProductSchema, DeleteProductSchema, DeleteQuerySchema, ProductParamsSchema, UpdateProductSchema } from '../schemas/product.schema.js';
+import { CreateProductSchema, DeleteProductSchema, DeleteQuerySchema, ProductParamsSchema, ProductResponseSchema, UpdateProductSchema } from '../schemas/product.schema.js';
 import { ProductService } from '../services/product.service.js';
 import z from 'zod';
 
@@ -15,20 +15,36 @@ export async function productRoutes(app: FastifyInstance) {
 	const server = app.withTypeProvider<ZodTypeProvider>();
 
 	// * POST /api/products con validación automática
-	server.post('/products',
+	server.post(
+		'/products',
 		{
-			schema: {body: CreateProductSchema}, // Fastify usará este esquema para validar el cuerpo de la solicitud
+			schema: {
+				// 👇 ESTO ES LO QUE BUSCAS
+				summary: 'Creación de Productos',
+				description:
+					'Crea un nuevo producto en el inventario validando el SKU único y el stock inicial.',
+				tags: ['Inventario'], // Esto agrupa las rutas en secciones
+				body: CreateProductSchema,
+				response: {
+					201: z.object({
+						data: ProductResponseSchema, // Tu esquema de respuesta
+					}),
+				},
+			}, // Fastify usará este esquema para validar el cuerpo de la solicitud
 		},
 		async (request, response) => {
 			// Si el código llega a esta línea, Fastify garantiza que request.body es PERFECTO.
 			const product = await ProductService.create(request.body);
-			return response.code(201).send({data: product});
+			return response.code(201).send({ data: product });
 		},
 	);
 
 	// * GET /api/products - Listar productos activos
 	server.get('/products', {
 		schema: { 
+			summary: 'Listar y Filtrar Productos',
+			description: 'Retorna todos los productos activos. Permite filtrar por stock mínimo usando query params.',
+			tags: ['Inventario'],
 			querystring: z.object({
 				stock: z.coerce.number().int().nonnegative().optional() // Ejemplo de validación adicional para filtrar por stock (opcional)
 			}) 
@@ -44,9 +60,6 @@ export async function productRoutes(app: FastifyInstance) {
 	server.get('/products/:id', {
 		schema: { 
 			params: ProductParamsSchema, // Validamos que el ID sea correcto
-			querystring: z.object({
-				stock: z.coerce.number().int().nonnegative().optional() // Ejemplo de validación adicional para filtrar por stock (opcional)
-			}) 
 		}, 
 	}, async (request, response) => {
 		const { id } = request.params;
@@ -57,20 +70,6 @@ export async function productRoutes(app: FastifyInstance) {
 		}
 		return response.code(200).send({data: product})
 	});
-
-	// // * GET /api/products?stock=10 - Listar productos con stock > 10 
-	// server.get('/products',{
-	// 	schema: {
-	// 		querystring: z.object({
-	// 			stock: z.coerce.number().int().nonnegative().optional()
-	// 		})
-	// 	}
-	// }, async (request, response) => {
-	// 		const { stock } = request.query;
-	// 		const products = await ProductService.findByStock(Number(stock));
-	// 		return response.code(200).send({data: products});		
-	// 	}
-	// ),
 
 	// * PUT /api/products/:id con validación de params y body
 	server.put('/products/:id', {

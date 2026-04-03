@@ -37,11 +37,25 @@ export const DeleteQuerySchema = z.object({
 	isDeleteLogic: z.enum(['true', 'false']).optional().default('false'),
 });
 
-// export const DeleteProductSchema = ProductParamsSchema; // Para DELETE, solo necesitamos validar el ID
+
+// 👇 NUEVO: Este es el que describe cómo SALE el producto (la respuesta)
+export const ProductResponseSchema = z.object({
+	id: z.string().uuid(),
+	name: z.string(),
+	sku: z.string(),
+	// Usamos coerce para que si llega un objeto Decimal de Prisma,
+	// lo transforme a número o string sin morir en el intento
+	price: z.preprocess((val) => Number(val), z.number()),
+	stock: z.number(),
+	description: z.string().nullable(),
+	isActive: z.boolean(),
+	// Nos aseguramos de que las fechas se serialicen correctamente como strings ISO
+	createdAt: z.coerce.string(),
+	updatedAt: z.coerce.string(),
+});
 
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
 export type ProductParams = z.infer<typeof ProductParamsSchema>;
 export type DeleteProductInput = z.infer<typeof DeleteProductSchema>;
-// export type DeleteProductLogicInput = z.infer<typeof DeleteProductLogicSchema>;
 export type DeleteQueryInput = z.infer<typeof DeleteQuerySchema>;
