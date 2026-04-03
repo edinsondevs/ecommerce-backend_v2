@@ -7,7 +7,6 @@ import { z } from 'zod';
 
 export const CreateProductSchema = z.object({
 	name: z.string({ message: "El nombre del producto debe superar los 5 caracteres" }).min(5),
-	// sku: z.string().length(8).toUpperCase(),
 	sku: z.string({ message: "El SKU debe ser valido" }).min(8),
 	price: z.number({ message: "El precio debe ser un número positivo" }).positive(),
 	stock: z.number({ message: "El stock debe ser un número entero no negativo" }).int().nonnegative().default(0),
@@ -28,23 +27,16 @@ export const DeleteProductSchema = z.object({
 	id: z.string().uuid({ message: 'El ID debe ser un UUID válido' }),
 });
 
-// Esquema para el BODY del DELETE con opción de eliminación lógica
-// export const DeleteProductLogicSchema = z.object({
-// 	isDeleteLogic: z.boolean().default(true), // Por defecto, hacemos eliminación lógica
-// });
-
 export const DeleteQuerySchema = z.object({
 	isDeleteLogic: z.enum(['true', 'false']).optional().default('false'),
 });
-
 
 // 👇 NUEVO: Este es el que describe cómo SALE el producto (la respuesta)
 export const ProductResponseSchema = z.object({
 	id: z.string().uuid(),
 	name: z.string(),
 	sku: z.string(),
-	// Usamos coerce para que si llega un objeto Decimal de Prisma,
-	// lo transforme a número o string sin morir en el intento
+	// Usamos coerce para que si llega un objeto Decimal de Prisma, lo transforme a número o string
 	price: z.preprocess((val) => Number(val), z.number()),
 	stock: z.number(),
 	description: z.string().nullable(),

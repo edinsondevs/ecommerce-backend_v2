@@ -3,6 +3,18 @@ import { Decimal } from '@prisma/client/runtime/library';
 import app from '../app'; // Importamos la instancia de tu servidor
 import { ProductService } from '../services/product.service';
 
+interface Product {
+	id: string;
+	name: string;
+	sku: string;
+	price: Decimal;
+	stock: number;
+	description: string;
+	isActive: boolean;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
 describe('--------------------          ----------------------------', () => {
 	describe('✅🎉 MÓDULO DE PRODUCTOS: CASOS EXITOSOS 🎉✅', () => {
 		it.skip('1. Debería crear un producto correctamente con datos válidos', async () => {
@@ -37,23 +49,20 @@ describe('--------------------          ----------------------------', () => {
 		});
 
 		it('2. Debería crear un producto exitosamente (SIMULADO)', async () => {
-			// 1. EL TRUCO SENIOR: Interceptamos el método 'create' de nuestro servicio
-			// y le decimos que devuelva una promesa resuelta con datos falsos.
-			// ¡PRISMA NUNCA SE ENTERARÁ DE ESTO!
+			// 1. Interceptamos el método 'create' de nuestro servicio y le decimos que devuelva una promesa resuelta con datos falsos.
 			const mockCreate = vi
 				.spyOn(ProductService, 'create')
 				.mockResolvedValue({
-					id: '123e4567-e89b-12d3-a456-426614174000', // ✅ AHORA SÍ ES UN UUID VÁLIDO
+					id: '123e4567-e89b-12d3-a456-426614174000',
 					name: 'Mouse Gamer',
 					sku: 'MOU12345', // ✅ 8 CARACTERES EXACTOS
 					price: new Decimal(30),
 					stock: 20,
-					description:
-						'Mouse gamer con iluminación RGB y alta precisión',
+					description: 'Mouse gamer con iluminación RGB y alta precisión',
 					isActive: true,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-				} as any);
+				} as Product);
 
 			// 2. Inyectamos la petición normalmente
 			const response = await app.inject({
@@ -64,8 +73,7 @@ describe('--------------------          ----------------------------', () => {
 					sku: '4f20ff23-73b2-40cd-a9aa-729b7032f60a',
 					price: 30,
 					stock: 20,
-					description:
-						'Mouse gamer con iluminación RGB y alta precisión',
+					description: 'Mouse gamer con iluminación RGB y alta precisión',
 				},
 			});
 
@@ -85,18 +93,18 @@ describe('--------------------          ----------------------------', () => {
 			const mockFind = vi
 				.spyOn(ProductService, 'findByStock')
 				.mockResolvedValue([
-					{
-						id: '123e4567-e89b-12d3-a456-426614174000',
-						name: 'Pro 1',
-						stock: 50,
-						sku: 'SKU00001',
-						price: 10,
-						description: '',
-						isActive: true,
-						createdAt: new Date(),
-						updatedAt: new Date(),
-					},
-				] as any);
+						{
+							id: '123e4567-e89b-12d3-a456-426614174000',
+							name: 'Pro 1',
+							stock: 50,
+							sku: 'SKU00001',
+							price: new Decimal(10),
+							description: '',
+							isActive: true,
+							createdAt: new Date(),
+							updatedAt: new Date(),
+						},
+					] as Product[]);
 
 			// // 1. Inyectamos la petición para listar productos
 			const response = await app.inject({
@@ -125,12 +133,11 @@ describe('--------------------          ----------------------------', () => {
 					sku: 'MOU123',
 					price: new Decimal(50),
 					stock: 20,
-					description:
-						'Mouse gamer con iluminación RGB y alta precisión',
+					description: 'Mouse gamer con iluminación RGB y alta precisión',
 					isActive: true,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-				});
+				} as Product);
 
 			// 2. Inyectamos la petición de actualización
 			const response = await app.inject({
@@ -166,8 +173,7 @@ describe('--------------------          ----------------------------', () => {
 					sku: 'MOU123',
 					price: new Decimal(30),
 					stock: 20,
-					description:
-						'Mouse gamer con iluminación RGB y alta precisión',
+					description: 'Mouse gamer con iluminación RGB y alta precisión',
 					isActive: true,
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -199,12 +205,11 @@ describe('--------------------          ----------------------------', () => {
 					sku: 'MOU123',
 					price: new Decimal(50),
 					stock: 20,
-					description:
-						'Mouse gamer con iluminación RGB y alta precisión',
+					description: 'Mouse gamer con iluminación RGB y alta precisión',
 					isActive: true,
 					createdAt: new Date(),
 					updatedAt: new Date(),
-				});
+				} as Product);
 			// 2. Inyectamos la petición para obtener el producto por su ID
 			const response = await app.inject({
 				method: 'GET',
@@ -239,7 +244,7 @@ describe('--------------------          ----------------------------', () => {
 		});
 
 		// 3. Ahora sí, empezamos a probar los casos de error y validación
-		it('7. Debería retornar Error 400 si intentamos CREAR un producto con precio negativo', async () => {
+		it('7. Error 400 si intentamos CREAR un producto con precio negativo', async () => {
 			// Usamos el superpoder .inject() de Fastify
 			const response = await app.inject({
 				method: 'POST',
@@ -262,7 +267,7 @@ describe('--------------------          ----------------------------', () => {
 			expect(body.message).toBe('Datos de entrada inválidos');
 		});
 
-		it('8. Debería retornar Error 400 si intentamos CREAR un producto con un SKU invalido', async () => {
+		it('8. Error 400 si intentamos CREAR un producto con un SKU invalido', async () => {
 			// 1. creamos un SKU inválido (menos de 8 caracteres)
 			const invalidSku = 'RRRFTG5'; // Solo 6 caracteres, debería ser 8
 
@@ -286,7 +291,7 @@ describe('--------------------          ----------------------------', () => {
 			expect(body.message).toBe('Datos de entrada inválidos');
 		});
 
-		it('9. Debería retornar Error 409 si intentamos CREAR un producto con un SKU existente', async () => {
+		it('9. Error 409 si intentamos CREAR un producto con un SKU existente', async () => {
 			// 1. creamos un SKU inválido (menos de 8 caracteres)
 			const invalidSku = 'RRRF345FTG542'; // Solo 6 caracteres, debería ser 8
 
@@ -312,7 +317,7 @@ describe('--------------------          ----------------------------', () => {
 			);
 		});
 
-		it('10. Debería retornar Error 404 si intentamos BORRAR un producto que no existe', async () => {
+		it('10. Error 404 si intentamos BORRAR un producto que no existe', async () => {
 			const nonExistentId = '4f20ff23-73b2-40cd-a9aa-729b7032f60b'; // ID que no existe en la base de datos
 			const response = await app.inject({
 				method: 'DELETE',
@@ -325,7 +330,7 @@ describe('--------------------          ----------------------------', () => {
 			expect(body.message).toBe('El recurso solicitado no existe.');
 		});
 
-		it('11. Debería retornar Error 404 si no ENCONTRAMOS un producto', async () => {
+		it('11. Error 404 si no ENCONTRAMOS un producto', async () => {
 			const nonExistentId = '4f20ff23-73b2-40cd-a9aa-729b7032f60b'; // ID que no existe en la base de datos
 			const response = await app.inject({
 				method: 'GET',

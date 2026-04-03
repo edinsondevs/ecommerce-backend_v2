@@ -19,7 +19,6 @@ export async function productRoutes(app: FastifyInstance) {
 		'/products',
 		{
 			schema: {
-				// 👇 ESTO ES LO QUE BUSCAS
 				summary: 'Creación de Productos',
 				description:
 					'Crea un nuevo producto en el inventario validando el SKU único y el stock inicial.',
@@ -29,11 +28,18 @@ export async function productRoutes(app: FastifyInstance) {
 					201: z.object({
 						data: ProductResponseSchema, // Tu esquema de respuesta
 					}),
+					400: z.object({
+						status: z.enum(['error']),
+						message: z.string(),
+						errors: z.array(z.object({
+							field: z.string(),
+							message: z.string(),
+						})).optional(), // Detalles de errores de validación
+					})
 				},
 			}, // Fastify usará este esquema para validar el cuerpo de la solicitud
 		},
 		async (request, response) => {
-			// Si el código llega a esta línea, Fastify garantiza que request.body es PERFECTO.
 			const product = await ProductService.create(request.body);
 			return response.code(201).send({ data: product });
 		},
@@ -47,7 +53,16 @@ export async function productRoutes(app: FastifyInstance) {
 			tags: ['Inventario'],
 			querystring: z.object({
 				stock: z.coerce.number().int().nonnegative().optional() // Ejemplo de validación adicional para filtrar por stock (opcional)
-			}) 
+			}),
+			response: {
+				200: z.object({
+					data: z.array(ProductResponseSchema), // Respuesta con un array de productos
+				}),
+				400: z.object({
+					status: z.enum(['error']),
+					message: z.string(),
+				})
+			}
 		}
 	}, async (request, response) => {
 		const { stock } = request.query;
@@ -58,8 +73,20 @@ export async function productRoutes(app: FastifyInstance) {
 
 	// * GET /api/products/:id con validación de params
 	server.get('/products/:id', {
-		schema: { 
+		schema: {
+			tags: ['Inventario'],
+			summary: 'Obtener Detalles de un Producto',
+			description: 'Retorna los detalles de un producto específico por su ID.',
 			params: ProductParamsSchema, // Validamos que el ID sea correcto
+			response: {
+				200: z.object({
+					data: ProductResponseSchema, // Respuesta con el producto encontrado
+				}),
+				404: z.object({
+					status: z.enum(['error']),
+					message: z.string(),
+				})
+			}
 		}, 
 	}, async (request, response) => {
 		const { id } = request.params;
@@ -73,9 +100,21 @@ export async function productRoutes(app: FastifyInstance) {
 
 	// * PUT /api/products/:id con validación de params y body
 	server.put('/products/:id', {
-		schema: { 
+		schema: {
+			tags: ['Inventario'],
+			summary: 'Actualizar un Producto',
+			description: 'Actualiza los detalles de un producto existente. Permite modificar cualquier campo excepto el ID.',
 			params: ProductParamsSchema,
-			body: UpdateProductSchema 
+			body: UpdateProductSchema,
+			response: {
+				200: z.object({
+					data: ProductResponseSchema, // Respuesta con el producto actualizado
+				}),
+				404: z.object({
+					status: z.enum(['error']),
+					message: z.string(),
+				})
+			}
 		}
 	}, async (request, response) => {
 
@@ -84,16 +123,30 @@ export async function productRoutes(app: FastifyInstance) {
 		const updatedProduct = await ProductService.update(id, request.body);
 		
 		if (!updatedProduct) {
-			return response.code(404).send({ message: 'Producto no encontrado' });
+			return response.code(404).send({ status: 'error', message: 'Producto no encontrado' });
 		}
 		return response.code(200).send({data: updatedProduct});
 	});
 
 	// * DELETE /api/products/:id con validación de params y body
 	server.delete('/products/:id',{
-		schema: { 
+		schema: {
+			tags: ['Inventario'],
+			summary: 'Eliminar un Producto',
+			description: 'Elimina un producto del inventario. Permite elegir entre eliminación lógica (marcar como inactivo) o eliminación física (borrar del sistema) mediante query params.',
 			params: DeleteProductSchema,
-			querystring: DeleteQuerySchema
+			querystring: DeleteQuerySchema,
+			response: {
+				200: z.object({
+					status: z.enum(['success', 'error']),
+					message: z.string(),
+					data: ProductResponseSchema.nullable(), // La respuesta puede incluir el producto eliminado o ser null
+				}),
+				404: z.object({
+					status: z.enum(['error']),
+					message: z.string(),
+				}),
+			},
 		}
 	}, async (request, response) => {
 		const { id } = request.params;
@@ -109,7 +162,7 @@ export async function productRoutes(app: FastifyInstance) {
 		if (!deleteProduct) {
 			return response
 				.code(404)
-				.send({ message: 'Producto no encontrado' });
+				.send({ status: 'error', message: 'Producto no encontrado' });
 		}
 
 		return response.code(200).send({
