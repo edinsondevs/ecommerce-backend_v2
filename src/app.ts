@@ -1,13 +1,14 @@
-import Fastify from 'fastify';
+import fastifyJwt from '@fastify/jwt';
+import Fastify, { FastifyInstance } from 'fastify';
 import { serializerCompiler, validatorCompiler, ZodTypeProvider, jsonSchemaTransform } from 'fastify-type-provider-zod';
 
 import fastifySwagger from '@fastify/swagger'; 
 import fastifySwaggerUi from '@fastify/swagger-ui';
 
 // Tus importaciones de rutas y plugins...
-import { productRoutes } from './routes/product.routes.js';
+import { productRoutes } from './routes/product.routes';
+import AuthService from './routes/auth.routes';
 import { errorHandler } from './plugins/errorHandler.js';
-
 
 /*******************************************************************************
  * @description: Implementación del Servidor (El Corazón con Fastify)
@@ -15,11 +16,23 @@ import { errorHandler } from './plugins/errorHandler.js';
 ********************************************************************************/
 
 // Instanciamos Fastify y le decimos: "Tus tipos van a venir de Zod"
-const app = Fastify({logger: {level: 'error'} }).withTypeProvider<ZodTypeProvider>();
+const app: FastifyInstance = Fastify({logger: {level: 'error'} }).withTypeProvider<ZodTypeProvider>();
 
 // Configuración de validadores Zod para Fastify - Le inyectamos los "compiladores" 
 app.setValidatorCompiler(validatorCompiler);
 app.setSerializerCompiler(serializerCompiler);
+
+// 1. Registramos el plugin de JWT
+app.register(fastifyJwt, {
+    secret: process.env.JWT_SECRET || 'super_secreto_de_respaldo_por_si_acaso'
+});
+
+// 👇 Le enseñamos a TypeScript que Fastify ahora sabe de JWT
+declare module 'fastify' {
+    export interface FastifyInstance {
+        authenticate: any;
+    }
+}
 
 // (Regla de Oro de Fastify): Swagger debe registrarse antes que tus rutas, para que pueda "escuchar" cuando las rutas se conectan.
 // ==========================================
@@ -46,6 +59,7 @@ app.register(fastifySwaggerUi, {
 
 // 2. REGISTRO DE RUTAS (Siempre después de Swagger)
 app.register(productRoutes, { prefix: '/api' });
+app.register(AuthService, { prefix: '/api/auth' });
 
 // 3. Manejador de errores
 app.setErrorHandler(errorHandler);
