@@ -14,14 +14,13 @@ export const errorHandler = (error: FastifyError, request: FastifyRequest, reply
   }
 
   // 2. Errores de Base de Datos (Prisma)
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
     // Código P2002: Violación de restricción única (Ej. SKU duplicado)
     if (error.code === 'P2002') {
       return reply.status(409).send({
         status: 'error',
         message: 'Conflicto: El registro ya existe en la base de datos.',
         // Prisma nos dice qué campo causó el conflicto (ej. 'sku')
-        target: error.meta?.target 
+        target: (error as any).meta?.target 
       });
     }
     
@@ -32,7 +31,6 @@ export const errorHandler = (error: FastifyError, request: FastifyRequest, reply
         message: 'El recurso solicitado no existe.'
       });
     }
-  }
 
   // 3. Logs internos para el desarrollador (No se envían al cliente)
   request.log.error(error);

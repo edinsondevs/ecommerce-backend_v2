@@ -15,14 +15,16 @@ export async function productRoutes(app: FastifyInstance) {
 	const server = app.withTypeProvider<ZodTypeProvider>();
 
 	// * POST /api/products con validación automática
-	server.post(
-		'/products',
-		{
+	server.post('/products', {
+			// 👇 El Guardia verifica el token ANTES de validar los datos
+			onRequest: [server.authenticate],
 			schema: {
 				summary: 'Creación de Productos',
 				description:
 					'Crea un nuevo producto en el inventario validando el SKU único y el stock inicial.',
 				tags: ['Inventario'], // Esto agrupa las rutas en secciones
+				// 👇 Le decimos a Swagger que obligue a usar el candadito aquí
+				security: [{ bearerAuth: [] }],
 				body: CreateProductSchema,
 				response: {
 					201: z.object({
@@ -31,11 +33,15 @@ export async function productRoutes(app: FastifyInstance) {
 					400: z.object({
 						status: z.enum(['error']),
 						message: z.string(),
-						errors: z.array(z.object({
-							field: z.string(),
-							message: z.string(),
-						})).optional(), // Detalles de errores de validación
-					})
+						errors: z
+							.array(
+								z.object({
+									field: z.string(),
+									message: z.string(),
+								}),
+							)
+							.optional(), // Detalles de errores de validación
+					}),
 				},
 			}, // Fastify usará este esquema para validar el cuerpo de la solicitud
 		},
@@ -47,7 +53,11 @@ export async function productRoutes(app: FastifyInstance) {
 
 	// * GET /api/products - Listar productos activos
 	server.get('/products', {
+		// 👇 El Guardia verifica el token ANTES de validar los datos
+		onRequest: [server.authenticate],
 		schema: { 
+			// 👇 Le decimos a Swagger que obligue a usar el candadito aquí
+			security: [{ bearerAuth: [] }],
 			summary: 'Listar y Filtrar Productos',
 			description: 'Retorna todos los productos activos. Permite filtrar por stock mínimo usando query params.',
 			tags: ['Inventario'],
@@ -73,7 +83,11 @@ export async function productRoutes(app: FastifyInstance) {
 
 	// * GET /api/products/:id con validación de params
 	server.get('/products/:id', {
+		// 👇 El Guardia verifica el token ANTES de validar los datos
+		onRequest: [server.authenticate],
 		schema: {
+			// 👇 Le decimos a Swagger que obligue a usar el candadito aquí
+			security: [{ bearerAuth: [] }],
 			tags: ['Inventario'],
 			summary: 'Obtener Detalles de un Producto',
 			description: 'Retorna los detalles de un producto específico por su ID.',
@@ -100,7 +114,10 @@ export async function productRoutes(app: FastifyInstance) {
 
 	// * PUT /api/products/:id con validación de params y body
 	server.put('/products/:id', {
+		// 👇 El Guardia verifica el token ANTES de validar los dato
+		onRequest: [server.authenticate],
 		schema: {
+			security: [{ bearerAuth: [] }], // Requiere autenticación
 			tags: ['Inventario'],
 			summary: 'Actualizar un Producto',
 			description: 'Actualiza los detalles de un producto existente. Permite modificar cualquier campo excepto el ID.',
@@ -121,7 +138,7 @@ export async function productRoutes(app: FastifyInstance) {
 		const { id } = request.params;
 
 		const updatedProduct = await ProductService.update(id, request.body);
-		
+
 		if (!updatedProduct) {
 			return response.code(404).send({ status: 'error', message: 'Producto no encontrado' });
 		}
@@ -130,7 +147,10 @@ export async function productRoutes(app: FastifyInstance) {
 
 	// * DELETE /api/products/:id con validación de params y body
 	server.delete('/products/:id',{
+		// 👇 El Guardia verifica el token ANTES de validar los datos
+		onRequest: [server.authenticate],
 		schema: {
+			security: [{ bearerAuth: [] }], // Requiere autenticación
 			tags: ['Inventario'],
 			summary: 'Eliminar un Producto',
 			description: 'Elimina un producto del inventario. Permite elegir entre eliminación lógica (marcar como inactivo) o eliminación física (borrar del sistema) mediante query params.',

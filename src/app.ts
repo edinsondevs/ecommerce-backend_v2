@@ -34,6 +34,16 @@ declare module 'fastify' {
     }
 }
 
+// 👇 ENTRENAMOS AL GUARDIA: Creamos la función que verifica el Token
+app.decorate('authenticate', async function (request: any, reply: any) {
+    try {
+        await request.jwtVerify(); // Esto lee el header "Authorization: Bearer <token>"
+    } catch (err) {
+        // Si no hay token, o está expirado, o es falso, lanzamos 401
+        reply.code(401).send({ status: 'error', message: 'Token faltante o inválido' });
+    }
+});
+
 // (Regla de Oro de Fastify): Swagger debe registrarse antes que tus rutas, para que pueda "escuchar" cuando las rutas se conectan.
 // ==========================================
 // 1. CONFIGURACIÓN DE SWAGGER
@@ -46,6 +56,15 @@ app.register(fastifySwagger, {
       description: 'Documentación interactiva de la API (Fastify + Prisma + Zod)',
       version: '1.0.0',
     },
+    components:{
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        }
+      }
+    }
   },
   // ¡MAGIA!: Transforma nuestros esquemas de Zod al formato que Swagger entiende
   transform: jsonSchemaTransform, 

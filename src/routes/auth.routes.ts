@@ -24,13 +24,32 @@ export default async function authRoutes(server: FastifyInstance) {
 					201: z.object({
 						data: UserResponseSchema,
 					}),
+					400: z.object({
+						status: z.enum(['error']),
+						message: z.string(),
+						errors: z
+							.array(
+								z.object({
+									field: z.string(),
+									message: z.string(),
+								}),
+							).optional(), // Detalles de errores de validación
+					}),
+					409: z.object({
+						status: z.enum(['error']),
+						message: z.string(),
+					}),
+					500: z.object({
+						status: z.enum(['error']),
+						message: z.string(),
+					}),
 				},
 			},
 		},
 		async (request, reply) => {
-			// Zod ya validó que el body trae email y password correctos
-			const user = await AuthService.register(request.body as any);
-			return reply.code(201).send({ data: user });
+			
+				const user = await AuthService.register(request.body as any);
+				return reply.code(201).send({ data: user });
 		},
 	);
 
