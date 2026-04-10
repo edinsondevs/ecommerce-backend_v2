@@ -17,7 +17,7 @@ export async function productRoutes(app: FastifyInstance) {
 	// * POST /api/products con validación automática
 	server.post('/products', {
 			// 👇 El Guardia verifica el token ANTES de validar los datos
-			onRequest: [server.authenticate],
+			onRequest: [server.requireAdmin],
 			schema: {
 				summary: 'Creación de Productos',
 				description:
@@ -115,7 +115,7 @@ export async function productRoutes(app: FastifyInstance) {
 	// * PUT /api/products/:id con validación de params y body
 	server.put('/products/:id', {
 		// 👇 El Guardia verifica el token ANTES de validar los dato
-		onRequest: [server.authenticate],
+		onRequest: [server.requireAdmin],
 		schema: {
 			security: [{ bearerAuth: [] }], // Requiere autenticación
 			tags: ['Inventario'],
@@ -148,7 +148,7 @@ export async function productRoutes(app: FastifyInstance) {
 	// * DELETE /api/products/:id con validación de params y body
 	server.delete('/products/:id',{
 		// 👇 El Guardia verifica el token ANTES de validar los datos
-		onRequest: [server.authenticate],
+		onRequest: [server.requireAdmin],
 		schema: {
 			security: [{ bearerAuth: [] }], // Requiere autenticación
 			tags: ['Inventario'],

@@ -1,31 +1,31 @@
-import { FastifyInstance } from 'fastify';
-import { z } from 'zod';
-import { AuthService } from '../services/auth.service';
+import { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { AuthService } from "../services/auth.service";
 import {
 	RegisterSchema,
 	LoginSchema,
 	UserResponseSchema,
 	LoginResponseSchema,
-} from '../schemas/auth.schema';
+} from "../schemas/auth.schema";
 
 export default async function authRoutes(server: FastifyInstance) {
 	// * -----------------------------------------
 	// * POST /api/auth/register
 	// * -----------------------------------------
 	server.post(
-		'/register',
+		"/register",
 		{
 			schema: {
-				summary: 'Registro de Usuario',
-				description: 'Crea un nuevo usuario encriptando su contraseña.',
-				tags: ['Autenticación'],
+				summary: "Registro de Usuario",
+				description: "Crea un nuevo usuario encriptando su contraseña.",
+				tags: ["Autenticación"],
 				body: RegisterSchema,
 				response: {
 					201: z.object({
 						data: UserResponseSchema,
 					}),
 					400: z.object({
-						status: z.enum(['error']),
+						status: z.enum(["error"]),
 						message: z.string(),
 						errors: z
 							.array(
@@ -37,11 +37,11 @@ export default async function authRoutes(server: FastifyInstance) {
 							.optional(), // Detalles de errores de validación
 					}),
 					409: z.object({
-						status: z.enum(['error']),
+						status: z.enum(["error"]),
 						message: z.string(),
 					}),
 					500: z.object({
-						status: z.enum(['error']),
+						status: z.enum(["error"]),
 						message: z.string(),
 					}),
 				},
@@ -57,12 +57,12 @@ export default async function authRoutes(server: FastifyInstance) {
 	// * POST /api/auth/login
 	// * -----------------------------------------
 	server.post(
-		'/login',
+		"/login",
 		{
 			schema: {
-				summary: 'Login de Usuario',
-				description: 'Verifica credenciales y devuelve un Token JWT.',
-				tags: ['Autenticación'],
+				summary: "Login de Usuario",
+				description: "Verifica credenciales y devuelve un Token JWT.",
+				tags: ["Autenticación"],
 				body: LoginSchema,
 				response: {
 					200: z.object({
@@ -70,11 +70,11 @@ export default async function authRoutes(server: FastifyInstance) {
 					}),
 				},
 				401: z.object({
-					status: z.enum(['error']),
+					status: z.enum(["error"]),
 					message: z.string(),
 				}),
 				500: z.object({
-					status: z.enum(['error']),
+					status: z.enum(["error"]),
 					message: z.string(),
 				}),
 			},
@@ -86,8 +86,12 @@ export default async function authRoutes(server: FastifyInstance) {
 			// 2. MAGIA: Firmamos el token JWT.
 			// Le guardamos dentro el ID, email y rol para no tener que buscar al usuario en la DB en cada petición futura.
 			const token = server.jwt.sign(
-				{ id: user.id, email: user.email, role: user.role },
-				{ expiresIn: '8h' }, // El token dejará de funcionar en 8 horas por seguridad
+				{
+					id: user.id,
+					email: user.email,
+					role: user.role,
+				},
+				{ expiresIn: "8h" }, // El token dejará de funcionar en 8 horas por seguridad
 			);
 
 			// 3. Devolvemos la respuesta

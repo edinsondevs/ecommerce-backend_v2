@@ -107,8 +107,7 @@ describe("--------------------          ----------------------------", () => {
 					sku: "4f20ff23-73b2-40cd-a9aa-729b7032f60a",
 					price: 30,
 					stock: 20,
-					description:
-						"Mouse gamer con iluminación RGB y alta precisión",
+					description: "Mouse gamer con iluminación RGB y alta precisión",
 				},
 			});
 
@@ -231,8 +230,7 @@ describe("--------------------          ----------------------------", () => {
 					sku: "MOU123",
 					price: new Decimal(50),
 					stock: 20,
-					description:
-						"Mouse gamer con iluminación RGB y alta precisión",
+					description: "Mouse gamer con iluminación RGB y alta precisión",
 					isActive: true,
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -382,6 +380,7 @@ describe("--------------------          ----------------------------", () => {
 
 describe("--------------------          ----------------------------", () => {
 	describe("⛔❌ MÓDULO DE PRODUCTOS: ERRORES Y VALIDACIONES ❌⛔", () => {
+		let normalUserToken: string; // 👈 Agrega este: El pase de usuario mortal
 		let testToken: string; // 👈 1. Creamos la variable para guardar nuestro pase VIP
 
 		beforeEach(() => {
@@ -396,6 +395,11 @@ describe("--------------------          ----------------------------", () => {
 				id: "admin-uuid-123",
 				email: "admin@test.com",
 				role: "ADMIN",
+			});
+			normalUserToken = app.jwt.sign({
+				id: "user-uuid-123",
+				email: "user@test.com",
+				role: "USER", // 👈 Rol mortal
 			});
 		});
 
@@ -503,9 +507,11 @@ describe("--------------------          ----------------------------", () => {
 			const nonExistentId = "4f20ff23-73b2-40cd-a9aa-729b7032f60b"; // ID que no existe en la base de datos
 
 			// 1. Interceptamos el metodo delete del servicio
-			const mockDelete = vi.spyOn(ProductService, 'delete').mockRejectedValue({
-				code: "P2025",
-			} as any);
+			const mockDelete = vi
+				.spyOn(ProductService, "delete")
+				.mockRejectedValue({
+					code: "P2025",
+				} as any);
 			const response = await app.inject({
 				method: "DELETE",
 				url: `/api/products/${nonExistentId}`,
@@ -518,15 +524,17 @@ describe("--------------------          ----------------------------", () => {
 			const body = JSON.parse(response.payload);
 			expect(body.status).toBe("error");
 			expect(body.message).toBe("El recurso solicitado no existe.");
-			mockDelete.mockRestore(); 
+			mockDelete.mockRestore();
 		});
 
 		it("12. Error 404 si no ENCONTRAMOS un producto", async () => {
 			const nonExistentId = "4f20ff23-73b2-40cd-a9aa-729b7032f60b"; // ID que no existe en la base de datos
 			// Interceptamos el metodo getById del servicio
-			const mockGetById = vi.spyOn(ProductService, 'getById').mockRejectedValue({
-				code: "P2025",
-			} as any);
+			const mockGetById = vi
+				.spyOn(ProductService, "getById")
+				.mockRejectedValue({
+					code: "P2025",
+				} as any);
 			const response = await app.inject({
 				method: "GET",
 				url: `/api/products/${nonExistentId}`,
@@ -595,6 +603,70 @@ describe("--------------------          ----------------------------", () => {
 			expect(body.message).toBe("Producto no encontrado");
 
 			mockGetById.mockRestore(); // Limpiamos el espía para que no afecte a otros tests
+		});
+		it("14.5 Error 403 (Forbidden) si un usuario NORMAL intenta CREAR un producto", async () => {
+			// Intentamos hacer un POST (Ruta protegida para ADMINS)
+			const response = await app.inject({
+				method: "POST",
+				url: "/api/products",
+				headers: {
+					// 👇 ¡ATENCIÓN! Aquí usamos el token del usuario normal
+					Authorization: `Bearer ${normalUserToken}`,
+				},
+				payload: {
+					name: "Teclado Ilegal",
+					sku: "ILLEGAL1", // 8 caracteres, válido
+					price: 50, // Precio positivo, válido
+					stock: 10,
+					description: "Intento de vulnerar la seguridad", // 👈 Ahora Zod será feliz
+					isActive: true, // 👈 Ahora Zod será feliz
+				},
+			});
+
+			// El guardia (requireAdmin) debería interceptarlo y devolver 403
+			expect(response.statusCode).toBe(403);
+
+			const body = JSON.parse(response.payload);
+			expect(body.status).toBe("error");
+			// Verifica que el mensaje coincida con el que pusiste en tu app.requireAdmin
+			expect(body.message).toContain("Acceso denegado");
+		});
+		it("14.6 Error 403 (Forbidden) si un usuario NORMAL intenta ACTUALIZAR (PUT) un producto", async () => {
+			const response = await app.inject({
+				method: "PUT",
+				url: "/api/products/4f20ff23-73b2-40cd-a9aa-729b7032f60a", // 👈 Un UUID con formato válido para que pase a Zod
+				headers: {
+					Authorization: `Bearer ${normalUserToken}`, // Pase de mortal
+				},
+				payload: {
+					name: "Intento de actualización ilegal",
+					price: 99,
+				},
+			});
+
+			// El guardia debe bloquearlo antes de que llegue al servicio
+			expect(response.statusCode).toBe(403);
+
+			const body = JSON.parse(response.payload);
+			expect(body.status).toBe("error");
+			expect(body.message).toContain("Acceso denegado");
+		});
+
+		it("14.7 Error 403 (Forbidden) si un usuario NORMAL intenta ELIMINAR (DELETE) un producto", async () => {
+			const response = await app.inject({
+				method: "DELETE",
+				url: "/api/products/4f20ff23-73b2-40cd-a9aa-729b7032f60a", // 👈 Un UUID con formato válido
+				headers: {
+					Authorization: `Bearer ${normalUserToken}`, // Pase de mortal
+				},
+			});
+
+			// El guardia actúa de nuevo
+			expect(response.statusCode).toBe(403);
+
+			const body = JSON.parse(response.payload);
+			expect(body.status).toBe("error");
+			expect(body.message).toContain("Acceso denegado");
 		});
 	});
 });
@@ -680,71 +752,75 @@ describe("--------------------          ----------------------------", () => {
 	});
 });
 
-describe("⚙️ Unit Tests: Product Service", () => {
-	// Limpiamos los espías antes de cada test para no cruzar datos
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
-	it("1. Debería crear un producto en la base de datos (create)", async () => {
-		const mockProduct = {
-			name: "Teclado",
-			sku: "TEC-001",
-			price: 50,
-			stock: 10,
-		};
-
-		// Espiamos a Prisma, NO al servicio
-		const mockPrismaCreate = vi
-			.spyOn(prisma.product, "create")
-			.mockResolvedValue(mockProduct as any);
-
-		// Ejecutamos el servicio real
-		const result = await ProductService.create(mockProduct);
-
-		expect(mockPrismaCreate).toHaveBeenCalledWith({ data: mockProduct });
-		expect(result).toEqual(mockProduct);
-	});
-
-	it("2. Debería listar solo los productos activos (list)", async () => {
-		const mockPrismaFindMany = vi
-			.spyOn(prisma.product, "findMany")
-			.mockResolvedValue([
-				{ id: "1", name: "Producto A", isActive: true },
-			] as any);
-
-		const result = await ProductService.list();
-
-		// Verificamos que el servicio le pasó el filtro "isActive: true" a Prisma
-		expect(mockPrismaFindMany).toHaveBeenCalledWith({
-			where: { isActive: true },
+describe("--------------------          ----------------------------", () => {
+	describe("⚙️ Unit Tests: Product Service", () => {
+		// Limpiamos los espías antes de cada test para no cruzar datos
+		beforeEach(() => {
+			vi.clearAllMocks();
 		});
-		expect(result).toHaveLength(1);
-	});
 
-	it("3. Debería obtener un producto por su ID (getById)", async () => {
-		const mockPrismaFindUnique = vi
-			.spyOn(prisma.product, "findUnique")
-			.mockResolvedValue({ id: "uuid-123" } as any);
+		it("1. Debería crear un producto en la base de datos (create)", async () => {
+			const mockProduct = {
+				name: "Teclado",
+				sku: "TEC-001",
+				price: 50,
+				stock: 10,
+			};
 
-		await ProductService.getById("uuid-123");
+			// Espiamos a Prisma, NO al servicio
+			const mockPrismaCreate = vi
+				.spyOn(prisma.product, "create")
+				.mockResolvedValue(mockProduct as any);
 
-		expect(mockPrismaFindUnique).toHaveBeenCalledWith({
-			where: { id: "uuid-123" },
+			// Ejecutamos el servicio real
+			const result = await ProductService.create(mockProduct);
+
+			expect(mockPrismaCreate).toHaveBeenCalledWith({
+				data: mockProduct,
+			});
+			expect(result).toEqual(mockProduct);
 		});
-	});
 
-	it("4. Debería eliminar físicamente el producto si isDeleteLogic es false (delete)", async () => {
-		const mockPrismaDelete = vi
-			.spyOn(prisma.product, "delete")
-			.mockResolvedValue({ id: "uuid-123" } as any);
+		it("2. Debería listar solo los productos activos (list)", async () => {
+			const mockPrismaFindMany = vi
+				.spyOn(prisma.product, "findMany")
+				.mockResolvedValue([
+					{ id: "1", name: "Producto A", isActive: true },
+				] as any);
 
-		// Fíjate en la imagen que me enviaste, la línea roja está en el "else" (eliminación física)
-		// Por eso pasamos "false" como segundo parámetro
-		await ProductService.delete("uuid-123", false);
+			const result = await ProductService.list();
 
-		expect(mockPrismaDelete).toHaveBeenCalledWith({
-			where: { id: "uuid-123" },
+			// Verificamos que el servicio le pasó el filtro "isActive: true" a Prisma
+			expect(mockPrismaFindMany).toHaveBeenCalledWith({
+				where: { isActive: true },
+			});
+			expect(result).toHaveLength(1);
+		});
+
+		it("3. Debería obtener un producto por su ID (getById)", async () => {
+			const mockPrismaFindUnique = vi
+				.spyOn(prisma.product, "findUnique")
+				.mockResolvedValue({ id: "uuid-123" } as any);
+
+			await ProductService.getById("uuid-123");
+
+			expect(mockPrismaFindUnique).toHaveBeenCalledWith({
+				where: { id: "uuid-123" },
+			});
+		});
+
+		it("4. Debería eliminar físicamente el producto si isDeleteLogic es false (delete)", async () => {
+			const mockPrismaDelete = vi
+				.spyOn(prisma.product, "delete")
+				.mockResolvedValue({ id: "uuid-123" } as any);
+
+			// Fíjate en la imagen que me enviaste, la línea roja está en el "else" (eliminación física)
+			// Por eso pasamos "false" como segundo parámetro
+			await ProductService.delete("uuid-123", false);
+
+			expect(mockPrismaDelete).toHaveBeenCalledWith({
+				where: { id: "uuid-123" },
+			});
 		});
 	});
 });

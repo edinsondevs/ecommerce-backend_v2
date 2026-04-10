@@ -1,5 +1,5 @@
 import fastifyJwt from '@fastify/jwt';
-import Fastify, { FastifyInstance } from 'fastify';
+import Fastify, { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { serializerCompiler, validatorCompiler, ZodTypeProvider, jsonSchemaTransform } from 'fastify-type-provider-zod';
 
 import fastifySwagger from '@fastify/swagger'; 
@@ -31,6 +31,7 @@ app.register(fastifyJwt, {
 declare module 'fastify' {
     export interface FastifyInstance {
         authenticate: any;
+        requireAdmin: any
     }
 }
 
@@ -43,6 +44,33 @@ app.decorate('authenticate', async function (request: any, reply: any) {
         reply.code(401).send({ status: 'error', message: 'Token faltante o inválido' });
     }
 });
+
+// 👇 NUEVO: Guardia para Administradores
+app.decorate(
+	"requireAdmin",
+	async (request: FastifyRequest, reply: FastifyReply) => {
+		try {
+			// 1. Primero verificamos que el token sea válido (reutilizamos authenticate)
+			await request.jwtVerify();
+
+			// 2. Extraemos el usuario del token ya verificado
+			const user = request.user as { role: string };
+
+			// 3. Verificamos si es ADMIN
+			if (user.role !== "ADMIN") {
+				return reply.status(403).send({
+					status: "error",
+					message:
+						"Acceso denegado: Se requieren permisos de administrador",
+				});
+			}
+		} catch (err) {
+			return reply
+				.status(401)
+				.send({ status: "error", message: "Token inválido" });
+		}
+	},
+);
 
 // (Regla de Oro de Fastify): Swagger debe registrarse antes que tus rutas, para que pueda "escuchar" cuando las rutas se conectan.
 // ==========================================
