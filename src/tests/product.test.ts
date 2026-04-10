@@ -162,8 +162,45 @@ describe("--------------------          ----------------------------", () => {
 		});
 
 		it("4. Debería listar solo productos activos", async () => {
-			// // 1. Inyectamos la petición para listar productos
-			vi.spyOn(ProductService, "list");
+			// 1. Inyectamos la petición para listar productos
+			const mockFind = vi
+				.spyOn(ProductService, "list")
+				.mockResolvedValue([
+					{
+						id: "123e4567-e89b-12d3-a456-426614174933",
+						name: "Pro Max 15",
+						stock: 25,
+						sku: "SKU54321",
+						price: new Decimal(10),
+						description: "",
+						isActive: true,
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					},
+					{
+						id: "123e4567-e89b-12d3-a456-426614174001",
+						name: "Pro Max 17",
+						stock: 40,
+						sku: "SKU98765",
+						price: new Decimal(10),
+						description: "",
+						isActive: true,
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					},
+					{
+						id: "123e4567-e89b-12d3-a456-426614174430",
+						name: "Pro 15",
+						stock: 90,
+						sku: "SKU00001",
+						price: new Decimal(10),
+						description: "",
+						isActive: true,
+						createdAt: new Date(),
+						updatedAt: new Date(),
+					},
+				] as Product[]);
+
 			const response = await app.inject({
 				method: "GET",
 				url: "/api/products",
@@ -179,6 +216,7 @@ describe("--------------------          ----------------------------", () => {
 
 			expect(ProductService.list).toHaveBeenCalled(); // Verificamos que se llamó al método list de nuestro servicio
 			expect(Array.isArray(body.data)).toBe(true); // Verificamos que nos devuelva un array de productos
+			mockFind.mockRestore(); // Limpiamos
 		});
 
 		it("5. Debería actualizar un producto correctamente", async () => {
@@ -420,8 +458,19 @@ describe("--------------------          ----------------------------", () => {
 		});
 
 		it("10. Error 409 si intentamos CREAR un producto con un SKU existente", async () => {
-			// 1. creamos un SKU inválido (menos de 8 caracteres)
-			const invalidSku = "RRRF345FTG542"; // Solo 6 caracteres, debería ser 8
+			// 1. creamos un SKU inválido (SKU-DUPLICADO)
+			const invalidSku = "SKU-DUPLICADO";
+
+			// 1. Creamos un error REAL de JavaScript
+			const prismaError = new Error("Error simulado de Prisma");
+			// 2. Le inyectamos las propiedades que Prisma enviaría
+			(prismaError as any).code = "P2002";
+			(prismaError as any).meta = { target: ["sku"] };
+
+			// 3. Hacemos que el espía rechace la promesa con ese error
+			const mockCreate = vi
+				.spyOn(ProductService, "create")
+				.mockRejectedValue(prismaError);
 
 			// 2. creamos la petición con el SKU inválido
 			const response = await app.inject({
@@ -446,10 +495,16 @@ describe("--------------------          ----------------------------", () => {
 			expect(body.message).toBe(
 				"Conflicto: El registro ya existe en la base de datos.",
 			);
+			mockCreate.mockRestore(); // Limpiamos el espía para que no afecte a otros tests
 		});
 
 		it("11. Error 404 si intentamos BORRAR un producto que no existe", async () => {
 			const nonExistentId = "4f20ff23-73b2-40cd-a9aa-729b7032f60b"; // ID que no existe en la base de datos
+
+			// 1. Interceptamos el metodo delete del servicio
+			const mockDelete = vi.spyOn(ProductService, 'delete').mockRejectedValue({
+				code: "P2025",
+			} as any);
 			const response = await app.inject({
 				method: "DELETE",
 				url: `/api/products/${nonExistentId}`,
@@ -462,10 +517,15 @@ describe("--------------------          ----------------------------", () => {
 			const body = JSON.parse(response.payload);
 			expect(body.status).toBe("error");
 			expect(body.message).toBe("El recurso solicitado no existe.");
+			mockDelete.mockRestore(); 
 		});
 
 		it("12. Error 404 si no ENCONTRAMOS un producto", async () => {
 			const nonExistentId = "4f20ff23-73b2-40cd-a9aa-729b7032f60b"; // ID que no existe en la base de datos
+			// Interceptamos el metodo getById del servicio
+			const mockGetById = vi.spyOn(ProductService, 'getById').mockRejectedValue({
+				code: "P2025",
+			} as any);
 			const response = await app.inject({
 				method: "GET",
 				url: `/api/products/${nonExistentId}`,
@@ -478,7 +538,8 @@ describe("--------------------          ----------------------------", () => {
 			const body = JSON.parse(response.payload);
 
 			expect(body.status).toBe("error");
-			expect(body.message).toBe("Producto no encontrado");
+			expect(body.message).toBe("El recurso solicitado no existe.");
+			mockGetById.mockRestore();
 		});
 
 		it("13. Error 404 si no EXISTE AL MODIFICARLO un producto", async () => {
