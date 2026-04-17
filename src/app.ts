@@ -104,7 +104,14 @@ app.register(fastifySwaggerUi, {
 });
 // ==========================================
 
+// ==========================================
 // 2. REGISTRO DE RUTAS (Siempre después de Swagger)
+
+// Redirección inicial a la documentación
+app.get('/', async (request, reply) => {
+  return reply.redirect('/docs');
+});
+
 app.register(productRoutes, { prefix: '/api' });
 app.register(AuthService, { prefix: '/api/auth' });
 
