@@ -4,6 +4,8 @@
   "description": "proyecto de api con prisma",
   "main": "index.js",
   "scripts": {
+    "postinstall": "prisma generate",
+    "build": "tsc",
     "dev": "tsx watch src/app.ts",
     "test": "vitest",
     "coverage": "vitest run --coverage --watch ",
